@@ -54,5 +54,5 @@ workflows:
         - content: |-
             #!/usr/bin/env bash
             echo "mode: ${BITRISE_TEST_SELECTION_MODE:-?}  summary: ${BITRISE_TEST_SELECTION_SUMMARY:-?}"
-            [ -n "$BITRISE_TEST_SELECTION_PATH" ] && cat "$BITRISE_TEST_SELECTION_PATH"
+            if [ -n "$BITRISE_TEST_SELECTION_PATH" ]; then cat "$BITRISE_TEST_SELECTION_PATH"; fi
     - deploy-to-bitrise-io@2: {}

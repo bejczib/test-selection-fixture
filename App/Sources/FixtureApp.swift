@@ -5,7 +5,7 @@ import Feature
 struct FixtureApp: App {
     var body: some Scene {
         WindowGroup {
-            CartView(viewModel: CartViewModel(client: StaticPriceSource()))
+            CartView(viewModel: CartViewModel.demo())
         }
     }
 }

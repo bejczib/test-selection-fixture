@@ -10,6 +10,11 @@ public final class CartViewModel: ObservableObject {
         self.client = client
     }
 
+    /// Keeps the app target free of a direct Networking dependency.
+    public static func demo() -> CartViewModel {
+        CartViewModel(client: StaticPriceSource())
+    }
+
     public func load() {
         let prices = (try? client.prices()) ?? [:]
         lines = prices.sorted { $0.key < $1.key }.map { (sku: $0.key, price: $0.value) }
