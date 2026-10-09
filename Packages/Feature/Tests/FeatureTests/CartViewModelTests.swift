@@ -17,3 +17,5 @@ final class CartViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.total)
     }
 }
+
+// try/feature-tests: touched test file only
