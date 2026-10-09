@@ -31,3 +31,5 @@ public struct StaticPriceSource: PriceSource {
         ["apple": Money(cents: 120, currency: "EUR"), "pear": Money(cents: 95, currency: "EUR")]
     }
 }
+
+// try/networking: touched to exercise selective testing
