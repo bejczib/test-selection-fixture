@@ -25,7 +25,9 @@ workflows:
     - xcode-build-for-test@3:
         inputs:
         - destination: generic/platform=iOS Simulator
-    - xcode-test-without-building@1: {}
+    - xcode-test-without-building@1:
+        inputs:
+        - destination: platform=iOS Simulator,name=iPhone 16,OS=latest
     - deploy-to-bitrise-io@2: {}
 
   selective_tests:
@@ -47,6 +49,7 @@ workflows:
         inputs:
         # Empty in full mode, so every test target runs.
         - only_testing: $BITRISE_TEST_SELECTION_XCODE_ONLY_TESTING_PATH
+        - destination: platform=iOS Simulator,name=iPhone 16,OS=latest
     - script@1:
         title: Show selection
         is_always_run: true
