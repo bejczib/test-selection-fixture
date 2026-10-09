@@ -1,0 +1,54 @@
+format_version: "17"
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+project_type: ios
+
+meta:
+  bitrise.io:
+    stack: osx-xcode-16.4.x
+
+app:
+  envs:
+  - BITRISE_PROJECT_PATH: FixtureApp.xcodeproj
+  - BITRISE_SCHEME: FixtureApp
+
+trigger_map:
+- push_branch: "*"
+  workflow: selective_tests
+- pull_request_target_branch: main
+  workflow: selective_tests
+
+workflows:
+  # Baseline: same build, every test target runs. Compare its Test Reports with selective_tests.
+  full_tests:
+    steps:
+    - git-clone@8: {}
+    - xcode-build-for-test@3: {}
+    - xcode-test-without-building@1: {}
+    - deploy-to-bitrise-io@2: {}
+
+  selective_tests:
+    steps:
+    - git-clone@8: {}
+    - xcode-build-for-test@3: {}
+    - git::https://github.com/bitrise-steplib/bitrise-step-test-selection.git@main:
+        title: Test Selection
+        inputs:
+        # Push builds have no BITRISEIO_GIT_BRANCH_DEST; diff against main explicitly.
+        - base_ref: main
+        - mode: enforce
+        - on_unknown_file: full
+        - on_error: full
+        - verbose: "true"
+    - xcode-test-without-building@1:
+        inputs:
+        # Empty in full mode, so every test target runs.
+        - only_testing: $BITRISE_TEST_SELECTION_XCODE_ONLY_TESTING_PATH
+    - script@1:
+        title: Show selection
+        is_always_run: true
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            echo "mode: ${BITRISE_TEST_SELECTION_MODE:-?}  summary: ${BITRISE_TEST_SELECTION_SUMMARY:-?}"
+            [ -n "$BITRISE_TEST_SELECTION_PATH" ] && cat "$BITRISE_TEST_SELECTION_PATH"
+    - deploy-to-bitrise-io@2: {}

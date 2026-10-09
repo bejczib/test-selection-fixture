@@ -1,0 +1,50 @@
+name: FixtureApp
+options:
+  bundleIdPrefix: io.bitrise.testselection
+  deploymentTarget:
+    iOS: "16.0"
+  xcodeVersion: "16.0"
+packages:
+  Core:
+    path: Packages/Core
+  Networking:
+    path: Packages/Networking
+  Feature:
+    path: Packages/Feature
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+targets:
+  FixtureApp:
+    type: application
+    platform: iOS
+    sources:
+      - App/Sources
+    dependencies:
+      - package: Feature
+    info:
+      path: App/Info.plist
+      properties:
+        UILaunchScreen: {}
+  FixtureAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - App/Tests
+    dependencies:
+      - target: FixtureApp
+schemes:
+  FixtureApp:
+    build:
+      targets:
+        FixtureApp: all
+        FixtureAppTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - FixtureAppTests
+        - package: Core/CoreTests
+        - package: Networking/NetworkingTests
+        - package: Feature/FeatureTests
