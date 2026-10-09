@@ -22,14 +22,18 @@ workflows:
   full_tests:
     steps:
     - git-clone@8: {}
-    - xcode-build-for-test@3: {}
+    - xcode-build-for-test@3:
+        inputs:
+        - destination: generic/platform=iOS Simulator
     - xcode-test-without-building@1: {}
     - deploy-to-bitrise-io@2: {}
 
   selective_tests:
     steps:
     - git-clone@8: {}
-    - xcode-build-for-test@3: {}
+    - xcode-build-for-test@3:
+        inputs:
+        - destination: generic/platform=iOS Simulator
     - git::https://github.com/bitrise-steplib/bitrise-step-test-selection.git@main:
         title: Test Selection
         inputs:
