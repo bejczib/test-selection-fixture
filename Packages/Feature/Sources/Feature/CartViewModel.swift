@@ -25,3 +25,5 @@ public final class CartViewModel: ObservableObject {
         return lines.dropFirst().reduce(first.price) { $0 + $1.price }
     }
 }
+
+// try/two-commits B: Feature touched
