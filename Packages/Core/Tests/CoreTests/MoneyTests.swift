@@ -11,3 +11,5 @@ final class MoneyTests: XCTestCase {
         XCTAssertEqual(Money(cents: 1005, currency: "EUR").formatted, "10.05 EUR")
     }
 }
+
+// try/list/cap: Core test touched, sorts after App/Sources/Generated

@@ -1,0 +1,1 @@
+enum Generated0572 {}
