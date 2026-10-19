@@ -45,10 +45,11 @@ workflows:
         - on_unknown_file: full
         - on_error: full
         - verbose: "true"
-    - xcode-test-without-building@1:
+    # Branch build of the step: reads test-selection.json itself, skips when nothing is selected.
+    - git::https://github.com/bitrise-steplib/bitrise-step-xcode-test-without-building.git@test-selection:
         inputs:
-        # Empty in full mode, so every test target runs.
-        - only_testing: $BITRISE_TEST_SELECTION_XCODE_ONLY_TESTING_PATH
+        - test_selection: $BITRISE_TEST_SELECTION_PATH
+        - on_empty_selection: skip
         - destination: platform=iOS Simulator,name=iPhone 16,OS=latest
     - script@1:
         title: Show selection
@@ -58,4 +59,23 @@ workflows:
             #!/usr/bin/env bash
             echo "mode: ${BITRISE_TEST_SELECTION_MODE:-?}  summary: ${BITRISE_TEST_SELECTION_SUMMARY:-?}"
             if [ -n "$BITRISE_TEST_SELECTION_PATH" ]; then cat "$BITRISE_TEST_SELECTION_PATH"; fi
+    - deploy-to-bitrise-io@2: {}
+
+  # Same selection, consumed by the one-shot Xcode Test step (build + test, no xctestrun).
+  selective_tests_xcode_test:
+    steps:
+    - git-clone@8: {}
+    - git::https://github.com/bitrise-steplib/bitrise-step-test-selection.git@main:
+        title: Test Selection
+        inputs:
+        - base_ref: main
+        - mode: enforce
+        - on_unknown_file: full
+        - on_error: full
+        - verbose: "true"
+    - git::https://github.com/bitrise-steplib/steps-xcode-test.git@test-selection:
+        inputs:
+        - test_selection: $BITRISE_TEST_SELECTION_PATH
+        - on_empty_selection: skip
+        - destination: platform=iOS Simulator,name=iPhone 16,OS=latest
     - deploy-to-bitrise-io@2: {}
