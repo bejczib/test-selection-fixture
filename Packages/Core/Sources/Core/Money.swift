@@ -20,3 +20,5 @@ public struct Money: Equatable, Hashable {
         return "\(whole).\(fraction < 10 ? "0" : "")\(fraction) \(currency)"
     }
 }
+
+// try/two-commits A: Core touched
