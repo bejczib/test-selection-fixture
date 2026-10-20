@@ -2,6 +2,9 @@ format_version: "17"
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 project_type: ios
 
+# This file mirrors the config stored on bitrise.io for the app (the app does NOT read it from
+# the repo). Keep the two in sync: update it through the Bitrise API / MCP or the Workflow editor.
+
 meta:
   bitrise.io:
     stack: osx-xcode-16.4.x
@@ -10,12 +13,19 @@ app:
   envs:
   - BITRISE_PROJECT_PATH: FixtureApp.xcodeproj
   - BITRISE_SCHEME: FixtureApp
+  # TS_BASE_REF and TS_CONFIG come from the build trigger only: an app-level default here
+  # would override the trigger's value.
 
 trigger_map:
-- push_branch: "*"
-  workflow: selective_tests
+# A changed_files filter on a PR trigger makes the backend load the PR's file list from the provider API.
 - pull_request_target_branch: main
-  workflow: selective_tests
+  changed_files:
+    regex: ".*"
+  workflow: selective_tests_trust_list
+- push_branch: try/list/*
+  workflow: selective_tests_trust_list
+- push_branch: "*"
+  workflow: selective_tests_main_base
 
 workflows:
   # Baseline: same build, every test target runs. Compare its Test Reports with selective_tests.
@@ -30,6 +40,14 @@ workflows:
         - destination: platform=iOS Simulator,name=iPhone 16,OS=latest
     - deploy-to-bitrise-io@2: {}
 
+  # Webhook builds: diff against main.
+  selective_tests_main_base:
+    envs:
+    - TS_BASE_REF: main
+    after_run:
+    - selective_tests
+
+  # Manual builds pass TS_BASE_REF and optionally TS_CONFIG as build environment variables.
   selective_tests:
     steps:
     - git-clone@8: {}
@@ -39,13 +57,12 @@ workflows:
     - git::https://github.com/bitrise-steplib/bitrise-step-test-selection.git@main:
         title: Test Selection
         inputs:
-        # Push builds have no BITRISEIO_GIT_BRANCH_DEST; diff against main explicitly.
-        - base_ref: main
+        - base_ref: $TS_BASE_REF
+        - config: $TS_CONFIG
         - mode: enforce
         - on_unknown_file: full
         - on_error: full
         - verbose: "true"
-    # Branch build of the step: reads test-selection.json itself, skips when nothing is selected.
     - git::https://github.com/bitrise-steplib/bitrise-step-xcode-test-without-building.git@test-selection:
         inputs:
         - test_selection: $BITRISE_TEST_SELECTION_PATH
@@ -61,6 +78,62 @@ workflows:
             if [ -n "$BITRISE_TEST_SELECTION_PATH" ]; then cat "$BITRISE_TEST_SELECTION_PATH"; fi
     - deploy-to-bitrise-io@2: {}
 
+  # Same as selective_tests, but the git-clone step leaves a depth-1 clone behind.
+  selective_tests_shallow:
+    steps:
+    - git-clone@8:
+        inputs:
+        - clone_depth: "1"
+    - xcode-build-for-test@3:
+        inputs:
+        - destination: generic/platform=iOS Simulator
+    - git::https://github.com/bitrise-steplib/bitrise-step-test-selection.git@main:
+        title: Test Selection
+        inputs:
+        - base_ref: $TS_BASE_REF
+        - mode: enforce
+        - on_unknown_file: full
+        - on_error: full
+        - verbose: "true"
+    - git::https://github.com/bitrise-steplib/bitrise-step-xcode-test-without-building.git@test-selection:
+        inputs:
+        - test_selection: $BITRISE_TEST_SELECTION_PATH
+        - on_empty_selection: skip
+        - destination: platform=iOS Simulator,name=iPhone 16,OS=latest
+    - deploy-to-bitrise-io@2: {}
+
+  # Trusts the backend's BITRISE_GIT_CHANGED_FILES list instead of diffing with git.
+  selective_tests_trust_list:
+    steps:
+    - git-clone@8: {}
+    - xcode-build-for-test@3:
+        inputs:
+        - destination: generic/platform=iOS Simulator
+    - script@1:
+        title: Show backend changed files
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            echo "BITRISE_GIT_CHANGED_FILES line count: $(printf '%s' "${BITRISE_GIT_CHANGED_FILES:-}" | grep -c . || true)"
+            printf '%s\n' "${BITRISE_GIT_CHANGED_FILES:-}" | head -3
+            echo "..."
+            printf '%s\n' "${BITRISE_GIT_CHANGED_FILES:-}" | tail -3
+            git fetch -q --depth=1 origin main && echo "git diff against main: $(git diff --name-only FETCH_HEAD...HEAD 2>/dev/null | wc -l | tr -d ' ') files"
+    - git::https://github.com/bitrise-steplib/bitrise-step-test-selection.git@main:
+        title: Test Selection
+        inputs:
+        - changed_files_complete: "true"
+        - mode: enforce
+        - on_unknown_file: full
+        - on_error: full
+        - verbose: "true"
+    - git::https://github.com/bitrise-steplib/bitrise-step-xcode-test-without-building.git@test-selection:
+        inputs:
+        - test_selection: $BITRISE_TEST_SELECTION_PATH
+        - on_empty_selection: skip
+        - destination: platform=iOS Simulator,name=iPhone 16,OS=latest
+    - deploy-to-bitrise-io@2: {}
+
   # Same selection, consumed by the one-shot Xcode Test step (build + test, no xctestrun).
   selective_tests_xcode_test:
     steps:
@@ -68,7 +141,7 @@ workflows:
     - git::https://github.com/bitrise-steplib/bitrise-step-test-selection.git@main:
         title: Test Selection
         inputs:
-        - base_ref: main
+        - base_ref: $TS_BASE_REF
         - mode: enforce
         - on_unknown_file: full
         - on_error: full
