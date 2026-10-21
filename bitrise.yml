@@ -152,3 +152,30 @@ workflows:
         - on_empty_selection: skip
         - destination: platform=iOS Simulator,name=iPhone 16,OS=latest
     - deploy-to-bitrise-io@2: {}
+
+  # Shadow release check: the backend config injected as a workflow env, the test steps from their
+  # test-selection-shadow branches. Every test runs; each step writes test-selection.json.
+  shadow_tests:
+    envs:
+    - BITRISE_TEST_SELECTION_CONFIG_JSON: '{"mode":"shadow","base_ref":"main"}'
+    steps:
+    - git-clone@8: {}
+    - xcode-build-for-test@3:
+        inputs:
+        - destination: generic/platform=iOS Simulator
+    - git::https://github.com/bitrise-steplib/bitrise-step-xcode-test-without-building.git@test-selection-shadow:
+        title: Xcode Test without building (shadow branch)
+        inputs:
+        - destination: platform=iOS Simulator,name=iPhone 16,OS=latest
+    - git::https://github.com/bitrise-steplib/steps-xcode-test.git@test-selection-shadow:
+        title: Xcode Test (shadow branch)
+        inputs:
+        - destination: platform=iOS Simulator,name=iPhone 16,OS=latest
+    - script@1:
+        title: Show shadow reports
+        is_always_run: true
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            find "$BITRISE_TEST_DEPLOY_DIR" -name test-selection.json | sort | while read -r f; do echo "== $f"; cat "$f"; echo; done
+    - deploy-to-bitrise-io@2: {}
